@@ -8,9 +8,18 @@ Starter templates for the **AI-Memory Hackathon by cognee** — three ready-to-r
 
 ### 1. Set up Qdrant Cloud
 
-Create a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io), then restore the provided snapshots:
+Create a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io), then download and restore the provided snapshots:
 
 ```bash
+# Download snapshots from S3
+mkdir -p snapshots
+curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/DocumentChunk_text-6835894903267623-2026-01-30-01-16-23.snapshot
+curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/Entity_name-6835894903267623-2026-01-30-01-16-24.snapshot
+curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/EntityType_name-6835894903267623-2026-01-30-01-16-24.snapshot
+curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/EdgeType_relationship_name-6835894903267623-2026-01-30-01-16-25.snapshot
+curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/TextDocument_name-6835894903267623-2026-01-30-01-16-25.snapshot
+curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/TextSummary_text-6835894903267623-2026-01-30-01-16-25.snapshot
+
 # Add your credentials
 cp .env.example .env
 # Edit .env with your Qdrant Cloud URL and API key
@@ -30,9 +39,16 @@ This uploads 6 pre-built collections (14,837 vectors, 768-dim, with payload inde
 | TextDocument_name | 2,000 | Document references |
 | TextSummary_text | 2,000 | Document summaries |
 
-### 2. Place the models
+### 2. Download and place the models
 
-Put the provided GGUF models in the `models/` directory:
+Download the models zip from S3 and extract:
+
+```bash
+curl -O https://cognee-qdrant-starter.s3.amazonaws.com/models.zip
+unzip models.zip -d models/
+```
+
+This gives you:
 
 ```
 models/
