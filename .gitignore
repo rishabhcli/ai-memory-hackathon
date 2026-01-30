@@ -9,3 +9,5 @@ cognee-minihack/
 cognee-minihack.zip
 models/
 models-*.zip
+snapshots/
+*.snapshot
