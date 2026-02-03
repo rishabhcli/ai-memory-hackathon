@@ -2,35 +2,52 @@
 
 # cognee-qdrant-starter
 
-Starter templates for the **AI-Memory Hackathon by cognee** — three ready-to-run FastAPI projects that demonstrate semantic search, analytics, and anomaly detection on procurement data using **local models** (Distil Labs SLM + nomic-embed-text) and **Qdrant Cloud**.
+Starter templates for the **AI-Memory Hackathon by cognee**. Three ready-to-run FastAPI projects: semantic search, spend analytics, and anomaly detection on procurement data.
+
+**Stack:** [cognee](https://github.com/topoteretes/cognee) (knowledge graph memory) + [Qdrant Cloud](https://cloud.qdrant.io) (vector search) + [Distil Labs](https://www.distillabs.ai/) (LLM reasoning) + [DigitalOcean](https://www.digitalocean.com/) (deployment)
+
+## How it works
+
+```
+Raw documents
+    |
+    v
+cognee.add() + cognee.cognify()     <-- cognee extracts entities, relationships, summaries
+    |
+    v
+Qdrant Cloud (6 collections)        <-- vectors + knowledge graph stored here
+    |
+    v
+FastAPI apps                         <-- search, analytics, anomaly detection
+    |
+    v
+Distil Labs SLM                     <-- LLM reasoning (local GGUF or hosted API)
+    |
+    v
+DigitalOcean App Platform           <-- deployed and shareable
+```
 
 ## Quick Start
 
 ### 1. Set up Qdrant Cloud
 
-Create a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io), then download and restore the provided snapshots.
+Create a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io), then download and restore the pre-built snapshots.
 
 > **Already have the files locally?** If you have `snapshots/` and `models/` directories, skip the download steps and go straight to restoring/running.
 
 ```bash
-# Download snapshots from S3
-mkdir -p snapshots
-curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/DocumentChunk_text-6835894903267623-2026-01-30-01-16-23.snapshot
-curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/Entity_name-6835894903267623-2026-01-30-01-16-24.snapshot
-curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/EntityType_name-6835894903267623-2026-01-30-01-16-24.snapshot
-curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/EdgeType_relationship_name-6835894903267623-2026-01-30-01-16-25.snapshot
-curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/TextDocument_name-6835894903267623-2026-01-30-01-16-25.snapshot
-curl -O --output-dir snapshots https://cognee-qdrant-starter.s3.amazonaws.com/snapshots/TextSummary_text-6835894903267623-2026-01-30-01-16-25.snapshot
+# Download snapshots (from DO Spaces or S3 fallback)
+uv run python download-from-spaces.py
 
 # Add your credentials
 cp .env.example .env
 # Edit .env with your Qdrant Cloud URL and API key
 
-# Restore all 6 collections from snapshots
+# Restore all 6 collections
 uv run python restore-snapshots.py
 ```
 
-This uploads 6 pre-built collections (14,837 vectors, 768-dim, with payload indexes) to your cluster:
+This uploads 6 pre-built collections (14,837 vectors, 768-dim) to your cluster:
 
 | Collection | Records | Content |
 |---|---|---|
@@ -41,28 +58,18 @@ This uploads 6 pre-built collections (14,837 vectors, 768-dim, with payload inde
 | TextDocument_name | 2,000 | Document references |
 | TextSummary_text | 2,000 | Document summaries |
 
-### 2. Download and place the models
-
-Download the models zip from S3 and extract:
+### 2. Download models
 
 ```bash
+# Included in download-from-spaces.py, or manually:
 curl -O https://cognee-qdrant-starter.s3.amazonaws.com/models.zip
 unzip models.zip -d models/
 ```
 
-This gives you:
-
-```
-models/
-  nomic-embed-text/
-    nomic-embed-text-v1.5.f16.gguf          # embeddings
-  cognee-distillabs-model-gguf-quantized/
-    model-quantized.gguf                      # Distil Labs SLM for reasoning
-  Qwen3-4B-Q4_K_M/
-    Qwen3-4B-Q4_K_M.gguf                     # Qwen3 fallback (optional)
-```
-
-The Distil Labs model powers the RAG Q&A and anomaly explanation endpoints. If not found, Qwen3-4B is used as fallback.
+Models:
+- **nomic-embed-text** (768-dim embeddings, local inference)
+- **Distil Labs SLM** (fine-tuned reasoning model, GGUF quantized)
+- **Qwen3-4B** (fallback LLM, optional)
 
 ### 3. Run a project
 
@@ -72,7 +79,6 @@ Each project is self-contained:
 cd project1-procurement-search  # or project2 or project3
 cp .env.example .env
 # Edit .env with your Qdrant Cloud URL and API key
-
 uv sync
 uv run python app.py
 ```
@@ -83,53 +89,101 @@ uv run python app.py
 
 Semantic search across all procurement data with interactive UI.
 
-**Qdrant features:**
-- **Query API** — vector similarity search with local embeddings
-- **Group API** (`query_points_groups`) — group results by payload field
-- **Point-ID queries** — "More like this" / "Less like this" discovery
-- **Payload indexing** (`create_payload_index`) — keyword + full-text indexes
-- **Filtered search** — combine vector similarity with metadata filters
+**Qdrant features:** Query API, Prefetch + RRF Fusion, Group API, Discovery API, Recommend API, payload indexing, filtered search
 
-**Endpoints:** `/search`, `/search/grouped`, `/discover`, `/recommend`, `/filter`, `/ask` (RAG Q&A), `/collections`
-
----
+**Endpoints:** `/search`, `/search/grouped`, `/discover`, `/recommend`, `/filter`, `/ask` (RAG Q&A), `/cognee-search`, `/add-knowledge`, `/collections`
 
 ### Project 2: Spend Analytics Dashboard (port 5553)
 
 Interactive analytics dashboard with Chart.js visualizations and semantic search.
 
-**Qdrant features:**
-- **Scroll API** — bulk data extraction for aggregation
-- **Query API** — semantic search over invoices
-- **Group API** — vendor-grouped search results
-- **Payload indexing** — fast vendor/type filtering
-
-**Shows:** $13.4M total spend, 1000 invoices + 1000 transactions, 10 vendors, monthly trends, top products by qty/revenue.
+**Qdrant features:** Scroll API (bulk extraction), Query API, Group API, payload indexing
 
 **Endpoints:** `/api/analytics`, `/api/search`, `/api/search/grouped`, `/api/insights` (LLM analysis)
-
----
 
 ### Project 3: Anomaly Detective (port 6971)
 
 Automated anomaly detection using vector analysis and Qdrant's batch API.
 
-**Qdrant features:**
-- **Batch Query API** (`query_batch_points`) — 50 recommend queries per request
-- **Point-ID queries** — find records similar to flagged anomalies
-- **Scroll API** with vectors — bulk vector retrieval for centroid analysis
-- **Payload indexing** — fast anomaly filtering
+**Qdrant features:** Batch Query API (50 recommend queries/request), Recommend API, Scroll API with vectors, payload indexing
 
-**Detection methods:**
-- Amount outliers (z-score > 2.5)
-- Embedding outliers (distance from centroid, z > 2.0)
-- Near-duplicates (similarity > 0.99 via batch recommend)
-- Vendor variance (coefficient of variation > 0.8)
+**Detection methods:** amount outliers (z-score), embedding outliers (centroid distance), near-duplicates (similarity > 0.99), vendor variance
 
 **Endpoints:** `/api/anomalies`, `/api/search`, `/api/investigate/{point_id}`, `/api/explain/{point_id}` (LLM explanation)
+
+## cognee Pipeline
+
+The starter data was built using cognee's ECL (Extract, Cognify, Load) pipeline. You can extend it with your own data:
+
+```bash
+cd cognee-pipeline
+cp .env.example .env
+# Configure Qdrant Cloud + LLM provider
+uv sync
+uv run python ingest.py
+```
+
+This runs `cognee.add()` + `cognee.cognify()` to extract entities, relationships, and summaries from raw documents, then stores them as vectors in Qdrant. See [cognee docs](https://docs.cognee.ai) for full pipeline options.
+
+## Deployment
+
+Two modes: **local** (dev with GGUF models) and **remote** (deployed with API-based inference).
+
+### Local dev (Distil Labs GGUF)
+
+```bash
+# .env: LLM_MODE=local, EMBED_MODE=local (defaults)
+uv run python app.py
+```
+
+Runs the Distil Labs SLM locally via llama-cpp-python. Requires 4-8GB RAM.
+
+### Deploy to DigitalOcean App Platform
+
+```bash
+# 1. Upload data to DO Spaces
+uv run python upload-to-spaces.py
+
+# 2. Set remote mode in .env
+#    LLM_MODE=remote
+#    LLM_API_URL=<distil-labs-hosted-endpoint>
+#    EMBED_MODE=remote
+#    EMBED_API_URL=<embedding-api-endpoint>
+
+# 3. Deploy
+doctl apps create --spec .do/app.yaml
+```
+
+Or use Docker locally:
+
+```bash
+docker compose up
+```
+
+The deployed version calls the Distil Labs hosted API (or any OpenAI-compatible endpoint) instead of loading GGUF files. This keeps the container small and runs on a $6/mo App Platform instance.
+
+**Free credits:** New DigitalOcean accounts get [$200 in free credits](https://www.digitalocean.com/try/free-trial) for 60 days.
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `QDRANT_URL` | - | Qdrant Cloud cluster URL |
+| `QDRANT_API_KEY` | - | Qdrant Cloud API key |
+| `LLM_MODE` | `local` | `local` (GGUF) or `remote` (API) |
+| `LLM_API_URL` | - | OpenAI-compatible chat completions endpoint |
+| `LLM_API_KEY` | - | API key for remote LLM |
+| `LLM_MODEL_NAME` | `distil-labs-slm` | Model name for remote LLM |
+| `EMBED_MODE` | `local` | `local` (GGUF) or `remote` (API) |
+| `EMBED_API_URL` | - | OpenAI-compatible embeddings endpoint |
+| `EMBED_API_KEY` | - | API key for remote embeddings |
+| `SPACES_ENDPOINT` | - | DO Spaces endpoint (e.g. `https://nyc3.digitaloceanspaces.com`) |
+| `SPACES_BUCKET` | - | DO Spaces bucket name |
 
 ## Prerequisites
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
-- [Qdrant Cloud](https://cloud.qdrant.io) cluster (free tier works)
+- [cognee](https://github.com/topoteretes/cognee) (knowledge graph memory)
+- [Qdrant Cloud](https://cloud.qdrant.io) cluster (free tier available)
+- [DigitalOcean](https://www.digitalocean.com/) account ($200 free credits available)

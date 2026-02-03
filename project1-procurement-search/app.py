@@ -9,6 +9,7 @@ FastAPI app with local nomic-embed-text embeddings + Qdrant advanced features:
 """
 
 import os
+import sys
 import json
 import time
 from contextlib import asynccontextmanager
@@ -17,10 +18,8 @@ import numpy as np
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
-from llama_cpp import Llama
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
-    Distance,
     FieldCondition,
     Filter,
     MatchValue,
@@ -38,6 +37,11 @@ from qdrant_client.models import (
 
 load_dotenv()
 
+# Add shared module to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from shared.llm import init_llm, get_llm_response, get_model_name, is_available as llm_available
+from shared.embeddings import init_embeddings, get_embedding
+
 EMBED_MODEL_PATH = os.path.join(
     os.path.dirname(__file__),
     "..",
@@ -51,16 +55,21 @@ qdrant = QdrantClient(
     api_key=os.environ["QDRANT_API_KEY"],
 )
 
-# Local LLM — Distil Labs model (primary) or Qwen3-4B (fallback)
 LLM_MODEL_PATH = os.path.join(
     os.path.dirname(__file__), "..", "models", "cognee-distillabs-model-gguf-quantized", "model-quantized.gguf"
 )
 LLM_FALLBACK_PATH = os.path.join(
     os.path.dirname(__file__), "..", "models", "Qwen3-4B-Q4_K_M", "Qwen3-4B-Q4_K_M.gguf"
 )
-llm_model = None
 
-embed_model = None
+# cognee integration (optional, graceful fallback if not installed)
+cognee_available = False
+try:
+    import cognee
+    from cognee.api.v1.search import SearchType
+    cognee_available = True
+except ImportError:
+    pass
 
 COLLECTIONS = [
     "DocumentChunk_text",
@@ -70,14 +79,6 @@ COLLECTIONS = [
     "TextDocument_name",
     "TextSummary_text",
 ]
-
-
-def get_embedding(text: str) -> list[float]:
-    """Embed text using local nomic-embed-text model."""
-    result = embed_model.embed(f"search_query: {text}")
-    if isinstance(result[0], list):
-        return result[0]
-    return result
 
 
 def setup_payload_indexes():
@@ -101,43 +102,10 @@ def setup_payload_indexes():
             pass
 
 
-def get_llm_response(system_prompt: str, user_prompt: str, max_tokens: int = 512) -> str:
-    """Generate LLM response using local Distil Labs / Qwen3 GGUF model."""
-    if llm_model is None:
-        return "No LLM loaded. Place model-quantized.gguf in models/cognee-distillabs-model-gguf-quantized/ or Qwen3-4B-Q4_K_M.gguf in models/Qwen3-4B-Q4_K_M/"
-    response = llm_model.create_chat_completion(
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        max_tokens=max_tokens,
-        temperature=0.3,
-    )
-    return response["choices"][0]["message"]["content"]
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global embed_model, llm_model
-    print("Loading nomic-embed-text model...")
-    embed_model = Llama(
-        model_path=EMBED_MODEL_PATH,
-        embedding=True,
-        n_ctx=2048,
-        n_batch=512,
-        verbose=False,
-    )
-    print("Embedding model loaded.")
-
-    # Load local LLM — prefer Distil Labs model, then Qwen3-4B
-    for path, name in [(LLM_MODEL_PATH, "Distil Labs"), (LLM_FALLBACK_PATH, "Qwen3-4B")]:
-        if os.path.exists(path):
-            print(f"Loading {name} LLM from {path}...")
-            llm_model = Llama(model_path=path, n_ctx=4096, n_batch=512, verbose=False)
-            print(f"{name} LLM loaded.")
-            break
-    else:
-        print("WARNING: No LLM model found. Place GGUF files in models/ directory.")
+    init_embeddings(EMBED_MODEL_PATH)
+    init_llm([(LLM_MODEL_PATH, "Distil Labs"), (LLM_FALLBACK_PATH, "Qwen3-4B")])
 
     for c in COLLECTIONS:
         info = qdrant.get_collection(c)
@@ -145,6 +113,16 @@ async def lifespan(app: FastAPI):
 
     print("Setting up payload indexes...")
     setup_payload_indexes()
+
+    if cognee_available:
+        try:
+            from cognee_community_vector_adapter_qdrant import register
+            print("cognee initialized with Qdrant backend.")
+        except ImportError:
+            print("cognee available but Qdrant adapter not installed.")
+    else:
+        print("cognee not installed. /cognee-search and /add-knowledge endpoints disabled.")
+
     print("Ready.")
     yield
 
@@ -655,7 +633,7 @@ async def ask(q: str = Query(...), collection: str = Query("DocumentChunk_text")
         answer = f"LLM error: {e}"
     llm_ms = round((time.time() - t1) * 1000, 1)
 
-    model_name = "distil-labs-local" if llm_model else (LLM_MODEL or "none")
+    model_name = get_model_name()
     return {
         "question": q,
         "answer": answer,
@@ -673,6 +651,62 @@ async def list_collections():
         info = qdrant.get_collection(c)
         result[c] = {"points": info.points_count, "vectors_size": info.config.params.vectors.size}
     return result
+
+
+# --- cognee integration: graph-aware search + knowledge ingestion ---
+
+
+@app.get("/cognee-search")
+async def cognee_search(q: str = Query(...), search_type: str = Query("INSIGHTS")):
+    """
+    cognee graph-aware search: queries the knowledge graph using vector similarity
+    combined with graph traversal for deeper, relationship-aware results.
+
+    Search types: CHUNKS, SUMMARIES, RAG_COMPLETION, GRAPH_COMPLETION, NATURAL_LANGUAGE
+    """
+    if not cognee_available:
+        return {"error": "cognee not installed. Run: uv add cognee cognee-community-vector-adapter-qdrant"}
+
+    t0 = time.time()
+    try:
+        st = getattr(SearchType, search_type.upper(), SearchType.CHUNKS)
+        results = await cognee.search(query_text=q, query_type=st)
+        items = [str(r) for r in results[:20]]
+    except Exception as e:
+        return {"error": f"cognee search failed: {e}", "time_ms": round((time.time() - t0) * 1000, 1)}
+
+    return {
+        "query": q,
+        "search_type": search_type,
+        "results": items,
+        "total": len(items),
+        "time_ms": round((time.time() - t0) * 1000, 1),
+        "method": "cognee_graph_search",
+    }
+
+
+@app.post("/add-knowledge")
+async def add_knowledge(text: str = Query(..., description="Text to ingest into the knowledge graph")):
+    """
+    Add new data to the cognee knowledge graph. Runs cognee.add() + cognee.cognify()
+    to extract entities, relationships, and summaries, then stores in Qdrant.
+    """
+    if not cognee_available:
+        return {"error": "cognee not installed. Run: uv add cognee cognee-community-vector-adapter-qdrant"}
+
+    t0 = time.time()
+    try:
+        await cognee.add(text)
+        await cognee.cognify()
+    except Exception as e:
+        return {"error": f"cognee ingestion failed: {e}", "time_ms": round((time.time() - t0) * 1000, 1)}
+
+    return {
+        "status": "ok",
+        "message": "Knowledge ingested and graph updated.",
+        "time_ms": round((time.time() - t0) * 1000, 1),
+        "method": "cognee_ecl_pipeline",
+    }
 
 
 if __name__ == "__main__":
