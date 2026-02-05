@@ -1,4 +1,4 @@
-![AI-Memory Hackathon by cognee](hackathon-banner.avif)
+![AI-Memory Hackathon by cognee](hackathon-banner.jpg)
 
 # cognee-qdrant-starter
 
