@@ -338,8 +338,8 @@ async def search(
         results = qdrant.query_points(
             collection_name=collection,
             prefetch=[
-                Prefetch(query=query_vector, limit=100),  # broad recall
-                Prefetch(query=query_vector, limit=50),   # tighter precision
+                Prefetch(query=query_vector, using="text", limit=100),  # broad recall
+                Prefetch(query=query_vector, using="text", limit=50),   # tighter precision
             ],
             query=FusionQuery(fusion=Fusion.RRF),
             limit=limit,
@@ -349,6 +349,7 @@ async def search(
         results = qdrant.query_points(
             collection_name=collection,
             query=query_vector,
+            using="text",
             limit=limit,
             with_payload=True,
         )
@@ -391,6 +392,7 @@ async def search_grouped(
     groups = qdrant.query_points_groups(
         collection_name=collection,
         query=query_vector,
+        using="text",
         group_by="type",
         limit=limit,
         group_size=5,
@@ -452,6 +454,7 @@ async def discover(
                     context=[ContextPair(positive=positive_id, negative=negative_id)],
                 )
             ),
+            using="text",
             limit=limit,
             with_payload=True,
         )
@@ -465,6 +468,7 @@ async def discover(
                     strategy=RecommendStrategy.AVERAGE_VECTOR,
                 )
             ),
+            using="text",
             limit=limit,
             with_payload=True,
         )
@@ -479,12 +483,13 @@ async def discover(
                     strategy=RecommendStrategy.BEST_SCORE,
                 )
             ),
+            using="text",
             limit=limit,
             with_payload=True,
         )
     else:
         results = qdrant.query_points(
-            collection_name=collection, query=query_vector, limit=limit, with_payload=True,
+            collection_name=collection, query=query_vector, using="text", limit=limit, with_payload=True,
         )
     search_ms = round((time.time() - t1) * 1000, 1)
 
@@ -537,6 +542,7 @@ async def recommend(
                 strategy=strat,
             )
         ),
+        using="text",
         limit=limit,
         with_payload=True,
     )
@@ -576,6 +582,7 @@ async def filtered_search(
     results = qdrant.query_points(
         collection_name=collection,
         query=query_vector,
+        using="text",
         query_filter=query_filter,
         limit=limit,
         with_payload=True,
@@ -606,8 +613,8 @@ async def ask(q: str = Query(...), collection: str = Query("DocumentChunk_text")
     results = qdrant.query_points(
         collection_name=collection,
         prefetch=[
-            Prefetch(query=query_vector, limit=50),
-            Prefetch(query=query_vector, limit=20),
+            Prefetch(query=query_vector, using="text", limit=50),
+            Prefetch(query=query_vector, using="text", limit=20),
         ],
         query=FusionQuery(fusion=Fusion.RRF),
         limit=limit,

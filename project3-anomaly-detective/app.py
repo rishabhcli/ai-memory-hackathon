@@ -81,7 +81,7 @@ def load_vectors_and_data(collection: str):
             data = parse_record(p.payload)
             if data:
                 records.append({
-                    "id": str(p.id), "vector": np.array(p.vector),
+                    "id": str(p.id), "vector": np.array(p.vector["text"]),
                     "data": data, "payload": p.payload,
                 })
         if offset is None:
@@ -142,6 +142,7 @@ def detect_duplicates_via_recommend(records):
         requests = [
             QueryRequest(
                 query=r["id"],
+                using="text",
                 limit=3,
                 score_threshold=0.99,
                 with_payload=True,
@@ -405,8 +406,8 @@ async def semantic_search(q: str = Query(...), limit: int = Query(20)):
     results = qdrant.query_points(
         collection_name="DocumentChunk_text",
         prefetch=[
-            Prefetch(query=vec, limit=100),
-            Prefetch(query=vec, limit=50),
+            Prefetch(query=vec, using="text", limit=100),
+            Prefetch(query=vec, using="text", limit=50),
         ],
         query=FusionQuery(fusion=Fusion.RRF),
         limit=limit,
@@ -431,6 +432,7 @@ async def investigate(point_id: str):
                 strategy=RecommendStrategy.BEST_SCORE,
             )
         ),
+        using="text",
         limit=10,
         with_payload=True,
     )
@@ -468,6 +470,7 @@ async def explain_anomaly(point_id: str):
                     strategy=RecommendStrategy.BEST_SCORE,
                 )
             ),
+            using="text",
             limit=5,
             with_payload=True,
         )
