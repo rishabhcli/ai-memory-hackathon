@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProcureGuard — AI Procurement Auditor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#060611;color:#e2e8f0;overflow-x:hidden}
+
+/* ── Floating orbs ── */
+.orb{position:fixed;border-radius:50%;filter:blur(80px);opacity:0.4;pointer-events:none;z-index:0}
+.orb-1{width:600px;height:600px;background:radial-gradient(circle,#7c3aed 0%,transparent 70%);top:-200px;left:-100px;animation:float1 20s ease-in-out infinite}
+.orb-2{width:500px;height:500px;background:radial-gradient(circle,#06b6d4 0%,transparent 70%);bottom:-150px;right:-100px;animation:float2 25s ease-in-out infinite}
+.orb-3{width:400px;height:400px;background:radial-gradient(circle,#f59e0b 0%,transparent 70%);top:50%;left:60%;opacity:0.2;animation:float3 18s ease-in-out infinite}
+@keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(80px,60px)}}
+@keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,-80px)}}
+@keyframes float3{0%,100%{transform:translate(0,0)}33%{transform:translate(-40px,30px)}66%{transform:translate(50px,-20px)}}
+
+/* ── Layout ── */
+.container{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+
+/* ── Hero ── */
+.hero{text-align:center;animation:fadeUp 1s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+.logo{font-size:4rem;font-weight:800;letter-spacing:-0.03em;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem}
+.tagline{font-size:1.25rem;color:#94a3b8;font-weight:300;margin-bottom:2rem;max-width:500px;margin-left:auto;margin-right:auto}
+
+/* ── Sponsor badges ── */
+.sponsors{display:flex;gap:0.75rem;justify-content:center;margin-bottom:2.5rem;flex-wrap:wrap;animation:fadeUp 1s ease-out 0.2s both}
+.sponsor{padding:0.35rem 0.9rem;border-radius:100px;font-size:0.75rem;font-weight:600;letter-spacing:0.02em;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);backdrop-filter:blur(12px)}
+.sponsor.cognee{color:#a5b4fc;border-color:rgba(165,180,252,0.3)}.sponsor.qdrant{color:#7dd3fc;border-color:rgba(125,211,252,0.3)}
+.sponsor.distil{color:#6ee7b7;border-color:rgba(110,231,183,0.3)}.sponsor.doo{color:#fcd34d;border-color:rgba(252,211,77,0.3)}
+
+/* ── CTA ── */
+.cta-wrap{animation:fadeUp 1s ease-out 0.4s both;margin-bottom:4rem}
+.cta{display:inline-block;padding:1rem 3rem;font-size:1.1rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#7c3aed,#06b6d4);border:none;border-radius:16px;cursor:pointer;text-decoration:none;position:relative;transition:transform 0.2s,box-shadow 0.3s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(124,58,237,0.5),0 0 80px rgba(6,182,212,0.3)}
+.cta::before{content:'';position:absolute;inset:-2px;border-radius:18px;background:linear-gradient(135deg,#7c3aed,#06b6d4);z-index:-1;opacity:0.5;filter:blur(15px);animation:ctaPulse 3s ease-in-out infinite}
+@keyframes ctaPulse{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.6;transform:scale(1.05)}}
+
+/* ── Feature cards ── */
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;max-width:900px;width:100%;margin-bottom:4rem;animation:fadeUp 1s ease-out 0.6s both}
+.feature{background:rgba(255,255,255,0.03);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:1.75rem;text-align:center;transition:border-color 0.3s,transform 0.3s}
+.feature:hover{border-color:rgba(124,58,237,0.4);transform:translateY(-4px)}
+.feature-icon{font-size:2.5rem;margin-bottom:0.75rem;display:block}
+.feature h3{font-size:1rem;font-weight:600;margin-bottom:0.5rem;color:#e2e8f0}
+.feature p{font-size:0.85rem;color:#64748b;line-height:1.5}
+
+/* ── Stats ── */
+.stats{display:flex;gap:3rem;justify-content:center;animation:fadeUp 1s ease-out 0.8s both;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-val{font-size:2rem;font-weight:700;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-label{font-size:0.8rem;color:#64748b;margin-top:0.25rem}
+
+/* ── Responsive ── */
+@media(max-width:768px){.logo{font-size:2.5rem}.features{grid-template-columns:1fr}.stats{gap:1.5rem}}
+</style>
+</head><body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="container">
+  <div class="hero">
+    <div class="logo">ProcureGuard</div>
+    <p class="tagline">AI Procurement Auditor with Structured Memory</p>
+  </div>
+
+  <div class="sponsors">
+    <span class="sponsor cognee">cognee Memory</span>
+    <span class="sponsor qdrant">Qdrant Search</span>
+    <span class="sponsor distil">Distil Labs SLM</span>
+    <span class="sponsor doo">DigitalOcean</span>
+  </div>
+
+  <div class="cta-wrap">
+    <a href="/app" class="cta">Launch ProcureGuard</a>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <span class="feature-icon">&#129504;</span>
+      <h3>Knowledge Graph Memory</h3>
+      <p>cognee extracts entities and relationships from raw procurement data, building persistent structured memory</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">&#128269;</span>
+      <h3>7 Advanced Search APIs</h3>
+      <p>Qdrant powers Prefetch+Fusion, Discovery, Recommend, Batch Query, Group, Scroll, and Payload filtering</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">&#9889;</span>
+      <h3>Local SLM Reasoning</h3>
+      <p>Distil Labs fine-tuned Qwen3-4B runs entirely on-device for tool selection, inference, and synthesis</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="s-spend">$0</div><div class="stat-label">Analyzed</div></div>
+    <div class="stat"><div class="stat-val" id="s-vectors">0</div><div class="stat-label">Vectors</div></div>
+    <div class="stat"><div class="stat-val" id="s-vendors">0</div><div class="stat-label">Vendors</div></div>
+    <div class="stat"><div class="stat-val" id="s-anomalies">0</div><div class="stat-label">Anomalies Found</div></div>
+  </div>
+</div>
+
+<script>
+function animateCounter(el, target, prefix='', suffix='', duration=1500) {
+  const start = 0;
+  const startTime = performance.now();
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(start + (target - start) * eased);
+    el.textContent = prefix + current.toLocaleString() + suffix;
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+fetch('/api/analytics').then(r=>r.json()).then(d => {
+  animateCounter(document.getElementById('s-spend'), Math.round((d.total_spend||0)/1e6), '$', 'M');
+  animateCounter(document.getElementById('s-vendors'), Object.keys(d.vendor_spend||{}).length);
+});
+fetch('/api/anomalies').then(r=>r.json()).then(d => {
+  animateCounter(document.getElementById('s-anomalies'), d.summary?.total || 0);
+});
+// vectors: sum of all collection point counts
+animateCounter(document.getElementById('s-vectors'), 14837);
+</script>
+</body></html>
