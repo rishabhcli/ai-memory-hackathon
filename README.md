@@ -53,8 +53,8 @@ Any tool, workflow, interface, or feature that benefits from QA over vendor, pro
 **Project installation**:
 ```bash
 # Ollama installation
-brew install ollama
-ollama serve
+brew install ollama   # Mac OS
+ollama serve &
 
 # Ollama model registration
 cd models
@@ -83,8 +83,11 @@ python solution_q_and_a.py
 ```
 
 **Pitfalls to avoid**:
+- failing to copy both `models/` and `cognee_export/` from USB
 - building the venv in `models/` instead of the project root
 - having a stale venv activated
+- Ollama is not running
+- New Qdrant conflicting with old in Docker
 
 **Next steps**:
 - look around the code
@@ -92,6 +95,37 @@ python solution_q_and_a.py
 - check out the databases
 - build something
 
+## Useful setup commands
+
+Skip this and check out Architecture if setup went smoothly.
+
+**Turn off and remove Qdrant from Docker**
+
+If necessary for recreating:
+```bash
+docker stop qdrant && docker rm qdrant
+docker volume rm qdrant_storage
+```
+
+**Mac start/stop ollama**
+```bash
+brew services start ollama
+brew services stop ollama
+brew services info ollama
+```
+
+**Linux start/stop ollama**
+```bash
+sudo systemctl start ollama
+sudo systemctl stop ollama
+sudo systemctl status ollama
+```
+
+**Alternate Ollama Installation**
+```bash
+# Alternate direct option
+curl -fsSL https://ollama.com/install.sh | sh
+```
 
 ## Architecture
 
@@ -275,9 +309,3 @@ docker compose up
 
 
 ## Useful commands
-
-Turn off and remove Qdrant if necessary for recreating:
-```bash
-docker stop qdrant && docker rm qdrant
-docker volume rm qdrant_storage
-```
