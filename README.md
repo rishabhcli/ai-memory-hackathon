@@ -97,7 +97,7 @@ python solution_q_and_a.py
 
 ## Useful setup commands
 
-Skip this and check out Architecture if setup went smoothly.
+Skip this reference if setup went smoothly.
 
 **Turn off and remove Qdrant from Docker**
 
@@ -127,9 +127,29 @@ sudo systemctl status ollama
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-## Architecture
+## What data do I have?
 
-Starter templates for the **AI-Memory Hackathon by cognee**. Three ready-to-run FastAPI projects: semantic search, spend analytics, and anomaly detection on procurement data.
+**After restore**, your cluster contains 14,837 vectors across 6 collections:
+
+| Collection | Records | Content |
+|---|---|---|
+| DocumentChunk_text | 2,000 | Invoice and transaction chunks |
+| Entity_name | 8,816 | Products, vendors, SKUs |
+| EntityType_name | 8 | Entity type definitions |
+| EdgeType_relationship_name | 13 | Relationship types |
+| TextDocument_name | 2,000 | Document references |
+| TextSummary_text | 2,000 | Document summaries |
+
+These items are also connected via semantics in your graph DB.
+
+The models included in the `models/` directory:
+- **nomic-embed-text** -- 768-dim embeddings, local inference
+- **Distil Labs SLM** -- fine-tuned reasoning model, GGUF quantized
+- **Qwen3-4B** -- fallback LLM, optional
+
+## Example Project Architecture
+
+Several example projects which one can work off of (if desired, totally optional). These are three ready-to-run FastAPI projects: semantic search, spend analytics, and anomaly detection on procurement data.
 
 **Stack:** [cognee](https://github.com/topoteretes/cognee) (knowledge graph memory) + [Qdrant Cloud](https://cloud.qdrant.io) (vector search) + [Distil Labs](https://www.distillabs.ai/) (LLM reasoning) + [DigitalOcean](https://www.digitalocean.com/) (deployment)
 
@@ -151,40 +171,6 @@ Distil Labs SLM                     <-- LLM reasoning (local GGUF or hosted API)
     v
 DigitalOcean App Platform           <-- deployed and shareable
 ```
-
-**Models** (included in `models/` directory):
-- **nomic-embed-text** -- 768-dim embeddings, local inference
-- **Distil Labs SLM** -- fine-tuned reasoning model, GGUF quantized
-- **Qwen3-4B** -- fallback LLM, optional
-
-
-## Qdrant Cloud (alternative to local Docker)
-
-If you prefer hosted Qdrant over local Docker, set up a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io) and use `.env.example` instead of `.env.example.local`:
-```bash
-cp .env.example .env
-# Edit .env -- fill in QDRANT_URL and QDRANT_API_KEY with your Cloud values
-uv run python download-from-spaces.py
-uv run python restore-snapshots.py
-```
-
-Direct download link: [cognee-vectors-snapshot.tar.gz](https://cognee-data.nyc3.digitaloceanspaces.com/cognee-vectors-snapshot.tar.gz) (91 MB)
-
-After restore, your cluster contains 14,837 vectors across 6 collections:
-
-| Collection | Records | Content |
-|---|---|---|
-| DocumentChunk_text | 2,000 | Invoice and transaction chunks |
-| Entity_name | 8,816 | Products, vendors, SKUs |
-| EntityType_name | 8 | Entity type definitions |
-| EdgeType_relationship_name | 13 | Relationship types |
-| TextDocument_name | 2,000 | Document references |
-| TextSummary_text | 2,000 | Document summaries |
-
-
-## Example results
-
-Example results comparing LLM and SLM outputs can be found in `responses.txt`.
 
 ## Example projects
 
@@ -213,6 +199,19 @@ uv run python app.py
 
 **Endpoints:** `/api/anomalies`, `/api/search`, `/api/investigate/{point_id}`, `/api/explain/{point_id}` (LLM explanation)
 
+## Using Qdrant Cloud (alternative to local Docker)
+
+If you prefer hosted Qdrant over local Docker, set up a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io) and use `.env.example` instead of `.env.example.local`:
+```bash
+cp .env.example .env
+# Edit .env -- fill in QDRANT_URL and QDRANT_API_KEY with your Cloud values
+uv run python download-from-spaces.py
+uv run python restore-snapshots.py
+```
+
+## Example results
+
+Example results comparing LLM and SLM outputs can be found in `responses.txt`.
 
 ## Adding your own data
 
