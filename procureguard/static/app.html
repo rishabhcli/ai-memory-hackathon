@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProcureGuard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#060611;--card:rgba(255,255,255,0.03);--card-border:rgba(255,255,255,0.06);--text:#e2e8f0;--text2:#64748b;--purple:#7c3aed;--cyan:#06b6d4;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--glass:blur(12px)}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+
+/* ── Nav bar ── */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:56px;background:rgba(6,6,17,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border);position:relative;z-index:10}
+.nav-left{display:flex;align-items:center;gap:1.5rem}
+.nav-logo{font-size:1.2rem;font-weight:800;background:linear-gradient(135deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-tabs{display:flex;gap:0.25rem}
+.nav-tab{padding:0.5rem 1.25rem;border-radius:10px;font-size:0.85rem;font-weight:500;color:var(--text2);cursor:pointer;border:1px solid transparent;transition:all 0.2s}
+.nav-tab:hover{color:var(--text);background:var(--card)}
+.nav-tab.active{color:#fff;background:linear-gradient(135deg,rgba(124,58,237,0.25),rgba(6,182,212,0.15));border-color:rgba(124,58,237,0.3)}
+.nav-right{display:flex;align-items:center;gap:1rem}
+.nav-kpi{text-align:center}
+.nav-kpi .v{font-size:0.95rem;font-weight:700}.nav-kpi .l{font-size:0.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em}
+.nav-kpi .v.purple{color:var(--purple)}.nav-kpi .v.green{color:var(--green)}.nav-kpi .v.red{color:var(--red)}.nav-kpi .v.amber{color:var(--amber)}
+.badge{padding:2px 8px;border-radius:100px;font-size:0.65rem;font-weight:600;border:1px solid rgba(255,255,255,0.08);background:var(--card)}
+.badge.cg{color:#a5b4fc}.badge.qd{color:#7dd3fc}.badge.dl{color:#6ee7b7}.badge.do{color:#fcd34d}
+
+/* ── Content area ── */
+.content{height:calc(100vh - 56px);overflow:hidden}
+.tab-panel{display:none;height:100%}.tab-panel.active{display:flex}
+
+/* ── AUDITOR TAB ── */
+#tab-auditor{display:flex}
+.chat-col{flex:0 0 60%;display:flex;flex-direction:column;border-right:1px solid var(--card-border)}
+.intel-col{flex:0 0 40%;display:flex;flex-direction:column;overflow-y:auto;padding:1rem;gap:1rem}
+
+/* Chat */
+.messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.75rem}
+.msg{max-width:88%;animation:msgIn 0.3s ease-out}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;padding:0.7rem 1rem;border-radius:16px 16px 4px 16px;background:linear-gradient(135deg,rgba(124,58,237,0.2),rgba(6,182,212,0.1));border:1px solid rgba(124,58,237,0.25);font-size:0.9rem}
+.msg.agent{align-self:flex-start;background:var(--card);backdrop-filter:var(--glass);border:1px solid var(--card-border);border-radius:16px 16px 16px 4px;padding:0.9rem 1rem;font-size:0.9rem;line-height:1.6}
+.msg.agent .answer{color:var(--text)}
+.msg.agent .answer strong{color:#fff}
+.msg.agent .answer code{color:#a5b4fc;background:rgba(165,180,252,0.1);padding:1px 5px;border-radius:4px;font-size:0.85em}
+
+/* Reasoning steps */
+details.reasoning{margin-bottom:0.6rem;border-radius:8px;overflow:hidden}
+details.reasoning summary{cursor:pointer;font-size:0.75rem;color:var(--text2);padding:0.3rem 0;list-style:none;display:flex;align-items:center;gap:0.4rem}
+details.reasoning summary::before{content:'';display:inline-block;width:6px;height:6px;border-right:1.5px solid var(--text2);border-bottom:1.5px solid var(--text2);transform:rotate(-45deg);transition:transform 0.2s}
+details.reasoning[open] summary::before{transform:rotate(45deg)}
+.steps{display:flex;flex-direction:column;gap:0.2rem;padding:0.4rem 0}
+.step{display:flex;align-items:flex-start;gap:0.5rem;font-size:0.78rem;color:var(--text2);padding:0.25rem 0.5rem;border-left:2px solid #333;margin-left:0.25rem;animation:stepIn 0.2s ease-out}
+@keyframes stepIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.step.think{border-left-color:var(--purple)}.step.search{border-left-color:var(--cyan)}.step.analytics{border-left-color:var(--amber)}.step.anomaly{border-left-color:var(--red)}.step.memory{border-left-color:var(--green)}.step.save{border-left-color:var(--green)}
+.step .icon{flex-shrink:0;width:16px;text-align:center;font-size:0.85rem}
+
+/* Input */
+.input-wrap{padding:0.75rem 1rem;border-top:1px solid var(--card-border);background:rgba(6,6,17,0.6);backdrop-filter:blur(20px)}
+.input-row{display:flex;gap:0.5rem;align-items:center;background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:0.25rem 0.25rem 0.25rem 1rem;transition:border-color 0.2s}
+.input-row:focus-within{border-color:rgba(124,58,237,0.5);box-shadow:0 0 20px rgba(124,58,237,0.1)}
+.input-row input{flex:1;background:transparent;border:none;color:var(--text);font-size:0.9rem;outline:none;font-family:inherit}
+.input-row input::placeholder{color:#475569}
+.input-row button{padding:0.6rem 1.4rem;border-radius:10px;border:none;background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff;font-weight:600;font-size:0.85rem;cursor:pointer;transition:opacity 0.2s;font-family:inherit}
+.input-row button:hover{opacity:0.9}.input-row button:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ── Intel panel cards ── */
+.card{background:var(--card);backdrop-filter:var(--glass);border:1px solid var(--card-border);border-radius:14px;padding:1rem;transition:border-color 0.2s}
+.card:hover{border-color:rgba(124,58,237,0.2)}
+.card h4{font-size:0.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;font-weight:600}
+
+/* KPI mini cards */
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem}
+.kpi-card{background:var(--card);border:1px solid var(--card-border);border-radius:10px;padding:0.75rem;text-align:center}
+.kpi-card .val{font-size:1.5rem;font-weight:700}.kpi-card .lbl{font-size:0.65rem;color:var(--text2);margin-top:0.1rem;text-transform:uppercase;letter-spacing:0.05em}
+
+/* Graph */
+#graph-box{width:100%;height:350px;border-radius:10px;overflow:hidden;position:relative;background:rgba(0,0,0,0.3)}
+#graph-box svg{width:100%;height:100%}
+#graph-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#334155;font-size:0.85rem}
+.graph-legend{display:flex;gap:0.75rem;margin-top:0.5rem;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:0.3rem;font-size:0.7rem;color:var(--text2)}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+
+/* Anomaly list */
+.anomaly-list{display:flex;flex-direction:column;gap:0.4rem;max-height:200px;overflow-y:auto}
+.anom-item{display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.sev-pill{padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:700}
+.sev-pill.high{background:rgba(239,68,68,0.15);color:var(--red)}.sev-pill.medium{background:rgba(245,158,11,0.15);color:var(--amber)}
+
+/* Memory */
+.memory-info{font-size:0.85rem;color:#a5b4fc}
+
+/* ── PRICING TAB ── */
+#tab-pricing{flex-direction:column;overflow-y:auto;padding:1.5rem;gap:1.5rem}
+.pricing-header{display:flex;justify-content:space-between;align-items:center}
+.pricing-header h2{font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.savings-badge{padding:0.5rem 1.25rem;border-radius:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);font-weight:700;font-size:1.1rem}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:1200px){.pricing-grid{grid-template-columns:1fr}}
+
+/* Price matrix table */
+.price-table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--card-border);background:var(--card)}
+.price-table{width:100%;border-collapse:collapse;font-size:0.8rem}
+.price-table th{padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:var(--text2);border-bottom:1px solid var(--card-border);position:sticky;top:0;background:rgba(6,6,17,0.9);backdrop-filter:blur(12px);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em}
+.price-table td{padding:0.5rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.02)}
+.price-table tr:hover td{background:rgba(124,58,237,0.05)}
+.price-cell{font-weight:600;font-variant-numeric:tabular-nums}
+.price-best{color:var(--green)}.price-mid{color:var(--amber)}.price-worst{color:var(--red)}
+.product-name{font-weight:500;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sku{color:var(--text2);font-family:monospace;font-size:0.7rem}
+
+/* Charts */
+.chart-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:1.25rem}
+.chart-card h4{font-size:0.8rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;font-weight:600}
+.chart-wrap{height:300px;position:relative}
+
+/* Recommendations */
+.reco-section{grid-column:1/-1}
+.reco-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-top:1rem}
+.reco-card{background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:1rem;transition:border-color 0.2s}
+.reco-card:hover{border-color:rgba(34,197,94,0.3)}
+.reco-card .product{font-weight:600;font-size:0.9rem;margin-bottom:0.3rem}
+.reco-card .action{color:var(--green);font-size:0.85rem;font-weight:500;margin-bottom:0.3rem}
+.reco-card .detail{color:var(--text2);font-size:0.8rem;line-height:1.4}
+.reco-card .saving{color:var(--amber);font-weight:700;font-size:1rem;margin-top:0.5rem}
+.btn-generate{padding:0.7rem 1.5rem;border-radius:10px;border:1px solid rgba(124,58,237,0.3);background:rgba(124,58,237,0.1);color:var(--purple);font-weight:600;font-size:0.85rem;cursor:pointer;transition:all 0.2s;font-family:inherit}
+.btn-generate:hover{background:rgba(124,58,237,0.2);border-color:rgba(124,58,237,0.5)}
+.btn-generate:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ── RED TEAM TAB ── */
+#tab-redteam{flex-direction:column;align-items:center;padding:2rem;gap:2rem;overflow-y:auto}
+.rt-header{text-align:center}
+.rt-header h2{font-size:1.5rem;font-weight:700;color:var(--red);margin-bottom:0.5rem}
+.rt-header p{color:var(--text2);font-size:0.9rem;max-width:500px}
+.rt-btn{padding:1rem 2.5rem;border-radius:14px;border:2px solid var(--red);background:rgba(239,68,68,0.1);color:var(--red);font-size:1.1rem;font-weight:700;cursor:pointer;transition:all 0.3s;position:relative;font-family:inherit}
+.rt-btn:hover{background:rgba(239,68,68,0.2);box-shadow:0 0 30px rgba(239,68,68,0.3)}
+.rt-btn::before{content:'';position:absolute;inset:-3px;border-radius:16px;background:var(--red);z-index:-1;opacity:0.15;filter:blur(12px);animation:rtPulse 2.5s ease-in-out infinite}
+@keyframes rtPulse{0%,100%{opacity:0.1;transform:scale(1)}50%{opacity:0.25;transform:scale(1.03)}}
+.rt-results{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;width:100%;max-width:1000px}
+.rt-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:1.25rem}
+.rt-card h4{font-size:0.8rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;font-weight:600}
+.rt-invoice{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:#94a3b8;white-space:pre-wrap;line-height:1.5}
+.rt-verdict{font-size:1.5rem;font-weight:800;margin-bottom:0.5rem}
+.rt-verdict.detected{color:var(--green)}.rt-verdict.missed{color:var(--red)}
+.rt-explanation{font-size:0.85rem;color:var(--text2);line-height:1.5}
+.rt-hint{margin-top:0.75rem;padding:0.5rem 0.75rem;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);font-size:0.8rem;color:var(--amber)}
+.rt-steps{display:flex;flex-direction:column;gap:0.3rem;margin-bottom:1rem}
+.rt-step{font-size:0.8rem;color:var(--text2);display:flex;align-items:center;gap:0.5rem}
+.rt-step .dot{width:6px;height:6px;border-radius:50%;background:var(--text2);flex-shrink:0}
+.rt-step.done .dot{background:var(--green)}.rt-step.active .dot{background:var(--amber);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.rt-secondary{display:flex;gap:1rem;justify-content:center}
+.rt-secondary button{padding:0.6rem 1.2rem;border-radius:10px;border:1px solid var(--card-border);background:var(--card);color:var(--text2);cursor:pointer;font-size:0.85rem;font-family:inherit;transition:all 0.2s}
+.rt-secondary button:hover{border-color:rgba(124,58,237,0.3);color:var(--text)}
+
+/* ── Ingest Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#0f0f1a;border:1px solid var(--card-border);border-radius:16px;padding:1.5rem;width:520px;max-width:90vw}
+.modal h3{font-size:1rem;font-weight:700;background:linear-gradient(135deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.75rem}
+.modal textarea{width:100%;height:150px;background:rgba(0,0,0,0.3);border:1px solid var(--card-border);border-radius:10px;color:var(--text);padding:0.75rem;font-family:'JetBrains Mono',monospace;font-size:0.8rem;resize:vertical;outline:none;transition:border-color 0.2s}
+.modal textarea:focus{border-color:rgba(124,58,237,0.4)}
+.modal .btn-row{display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end}
+.modal button{padding:0.5rem 1rem;border-radius:8px;border:none;cursor:pointer;font-size:0.85rem;font-family:inherit;transition:all 0.2s}
+.modal .primary{background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff;font-weight:600}
+.modal .secondary{background:var(--card);color:var(--text2);border:1px solid var(--card-border)}
+
+/* ── Graph tooltip ── */
+.graph-tooltip{position:absolute;padding:0.5rem 0.75rem;background:rgba(6,6,17,0.95);border:1px solid var(--card-border);border-radius:8px;font-size:0.75rem;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:5;max-width:220px}
+.graph-tooltip .tt-name{font-weight:600;color:var(--text);margin-bottom:0.15rem}
+.graph-tooltip .tt-type{color:var(--text2);font-size:0.7rem}
+.graph-tooltip .tt-amount{color:var(--amber);font-weight:600;margin-top:0.15rem}
+</style>
+</head><body>
+
+<!-- ── Navigation ── -->
+<nav class="nav">
+  <div class="nav-left">
+    <a href="/" class="nav-logo" style="text-decoration:none">ProcureGuard</a>
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="switchTab('auditor')">Auditor</div>
+      <div class="nav-tab" onclick="switchTab('pricing')">Pricing</div>
+      <div class="nav-tab" onclick="switchTab('redteam')">Red Team</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="nav-kpi"><div class="v purple" id="nk-spend">-</div><div class="l">Spend</div></div>
+    <div class="nav-kpi"><div class="v green" id="nk-inv">-</div><div class="l">Invoices</div></div>
+    <div class="nav-kpi"><div class="v red" id="nk-anom">-</div><div class="l">Anomalies</div></div>
+    <div class="nav-kpi"><div class="v amber" id="nk-vendors">-</div><div class="l">Vendors</div></div>
+    <span class="badge cg">cognee</span>
+    <span class="badge qd">Qdrant</span>
+    <span class="badge dl">Distil</span>
+    <span class="badge do">DO</span>
+  </div>
+</nav>
+
+<!-- ── Tab content ── -->
+<div class="content">
+
+<!-- === AUDITOR TAB === -->
+<div class="tab-panel active" id="tab-auditor">
+  <div class="chat-col">
+    <div class="messages" id="messages">
+      <div class="msg agent"><div class="answer">Welcome to <strong>ProcureGuard</strong>. I'm your AI procurement auditor with persistent memory, dynamic pricing intelligence, and adversarial fraud detection.<br><br>Ask me about payments, vendors, pricing, anomalies, or anything across 1,000 invoices and 1,000 transactions.<br><br><em style="color:var(--text2)">Try: "Which vendor offers the cheapest laptops?" or "Check payments to Vendor 2"</em></div></div>
+    </div>
+    <div class="input-wrap">
+      <div class="input-row">
+        <input id="userInput" placeholder="Ask ProcureGuard..." autofocus />
+        <button id="sendBtn" onclick="sendQuery()">Ask</button>
+      </div>
+    </div>
+  </div>
+  <div class="intel-col">
+    <div class="card">
+      <h4>Dashboard</h4>
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="val" style="color:var(--purple)" id="kpi-spend">-</div><div class="lbl">Total Spend</div></div>
+        <div class="kpi-card"><div class="val" style="color:var(--green)" id="kpi-inv">-</div><div class="lbl">Invoices</div></div>
+        <div class="kpi-card"><div class="val" style="color:var(--red)" id="kpi-anom">-</div><div class="lbl">Anomalies</div></div>
+        <div class="kpi-card"><div class="val" style="color:var(--amber)" id="kpi-vendors">-</div><div class="lbl">Vendors</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Knowledge Graph</h4>
+      <div id="graph-box"><div id="graph-placeholder">Ask a question to explore the graph</div><svg></svg><div class="graph-tooltip" id="graphTooltip"></div></div>
+      <div class="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#ff6b6b"></div>Vendor</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ffd93d"></div>Invoice</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4ecdc4"></div>Transaction</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6bcb77"></div>Product</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Amount</div>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Top Anomalies</h4>
+      <div class="anomaly-list" id="anomaly-list">Loading...</div>
+    </div>
+    <div class="card">
+      <h4>Memory</h4>
+      <div class="memory-info" id="memory-info">Checking...</div>
+    </div>
+  </div>
+</div>
+
+<!-- === PRICING TAB === -->
+<div class="tab-panel" id="tab-pricing">
+  <div class="pricing-header">
+    <h2>Dynamic Pricing Intelligence</h2>
+    <div class="savings-badge" id="savings-badge">Loading...</div>
+  </div>
+
+  <div class="pricing-grid">
+    <div class="card" style="grid-column:1/-1">
+      <h4>Vendor Price Comparison Matrix</h4>
+      <div class="price-table-wrap" style="max-height:400px;overflow-y:auto">
+        <table class="price-table" id="price-table"><thead><tr><th>Product</th><th>SKU</th><th>Best Vendor</th><th>Best Price</th><th>Worst Price</th><th>Spread</th><th>Savings</th></tr></thead><tbody id="price-tbody"></tbody></table>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h4>Price Trends — Top Products</h4>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h4>Savings Potential by Product</h4>
+      <div class="chart-wrap"><canvas id="savingsChart"></canvas></div>
+    </div>
+    <div class="reco-section card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4 style="margin:0">Optimization Recommendations</h4>
+        <button class="btn-generate" id="recoBtn" onclick="generateRecommendations()">Generate with SLM</button>
+      </div>
+      <div class="reco-grid" id="reco-grid"><div style="color:var(--text2);font-size:0.85rem;padding:1rem">Click "Generate with SLM" to get AI-powered pricing optimization recommendations from the Distil Labs model.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- === RED TEAM TAB === -->
+<div class="tab-panel" id="tab-redteam">
+  <div class="rt-header">
+    <h2>Red Team Mode</h2>
+    <p>Generate a synthetic fraudulent invoice using the Distil Labs SLM, ingest it through the cognee pipeline, and challenge the anomaly detector to catch it.</p>
+  </div>
+  <button class="rt-btn" id="rtBtn" onclick="runRedTeam()">Generate Fraudulent Invoice</button>
+  <div class="rt-results" id="rt-results" style="display:none">
+    <div class="rt-card">
+      <h4>Generated Invoice</h4>
+      <div class="rt-invoice" id="rt-invoice"></div>
+      <div class="rt-hint" id="rt-hint"></div>
+    </div>
+    <div class="rt-card">
+      <h4>Detection Results</h4>
+      <div class="rt-steps" id="rt-steps"></div>
+      <div class="rt-verdict" id="rt-verdict"></div>
+      <div class="rt-explanation" id="rt-explanation"></div>
+    </div>
+  </div>
+  <div class="rt-secondary">
+    <button onclick="showIngestModal()">Add Custom Document</button>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<!-- Ingest Modal -->
+<div class="modal-overlay" id="ingestModal">
+  <div class="modal">
+    <h3>Add Procurement Document</h3>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:0.75rem">Paste raw invoice or transaction text. It will be processed through cognee's entity extraction pipeline.</p>
+    <textarea id="ingestText" placeholder="Invoice INV-V9-M03-779589 from Vendor 9, total $25,325.84..."></textarea>
+    <div class="btn-row"><button class="secondary" onclick="closeIngestModal()">Cancel</button><button class="primary" onclick="submitIngest()">Ingest</button></div>
+  </div>
+</div>
+
+<script>
+/* ── Tab switching ── */
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  document.querySelector(`.nav-tab[onclick="switchTab('${id}')"]`).classList.add('active');
+  if (id === 'pricing' && !pricingLoaded) loadPricing();
+}
+
+/* ── Load KPIs ── */
+fetch('/api/analytics').then(r=>r.json()).then(d => {
+  const s = '$'+(d.total_spend/1e6).toFixed(1)+'M';
+  const v = Object.keys(d.vendor_spend||{}).length;
+  document.getElementById('kpi-spend').textContent = s;
+  document.getElementById('nk-spend').textContent = s;
+  document.getElementById('kpi-inv').textContent = d.total_invoices||'-';
+  document.getElementById('nk-inv').textContent = d.total_invoices||'-';
+  document.getElementById('kpi-vendors').textContent = v;
+  document.getElementById('nk-vendors').textContent = v;
+});
+fetch('/api/anomalies').then(r=>r.json()).then(d => {
+  document.getElementById('kpi-anom').textContent = d.summary?.total||0;
+  document.getElementById('nk-anom').textContent = d.summary?.total||0;
+  const list = document.getElementById('anomaly-list');
+  const items = (d.anomalies||[]).slice(0,8);
+  list.innerHTML = items.map(a=>`<div class="anom-item"><span class="sev-pill ${a.severity}">${a.severity.toUpperCase()}</span><span>${a.type}: ${a.detail.slice(0,55)}</span></div>`).join('')||'No anomalies';
+});
+fetch('/api/history').then(r=>r.json()).then(d => {
+  document.getElementById('memory-info').textContent = (d.history||[]).length + ' conversation entries stored';
+}).catch(()=>{ document.getElementById('memory-info').textContent = 'Ready'; });
+
+/* ── Chat ── */
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+let isStreaming = false;
+
+function sendQuery(){
+  const q=inputEl.value.trim(); if(!q||isStreaming)return;
+  inputEl.value=''; addMessage('user',q); streamAgent(q); updateGraph(q);
+}
+inputEl.addEventListener('keydown',e=>{if(e.key==='Enter')sendQuery()});
+
+function addMessage(role,content){
+  const div=document.createElement('div');div.className='msg '+role;
+  div.innerHTML=role==='user'?content:`<div class="answer">${content}</div>`;
+  messagesEl.appendChild(div);messagesEl.scrollTop=messagesEl.scrollHeight;return div;
+}
+
+function streamAgent(query){
+  isStreaming=true;sendBtn.disabled=true;
+  const msgDiv=document.createElement('div');msgDiv.className='msg agent';
+  const details=document.createElement('details');details.className='reasoning';details.open=true;
+  const summary=document.createElement('summary');summary.textContent='Reasoning steps';
+  const stepsDiv=document.createElement('div');stepsDiv.className='steps';
+  details.appendChild(summary);details.appendChild(stepsDiv);
+  const answerDiv=document.createElement('div');answerDiv.className='answer';
+  msgDiv.appendChild(details);msgDiv.appendChild(answerDiv);messagesEl.appendChild(msgDiv);
+
+  const es=new EventSource('/api/ask?q='+encodeURIComponent(query));
+  es.onmessage=function(e){
+    try{
+      const data=JSON.parse(e.data);
+      if(data.step==='done'){es.close();isStreaming=false;sendBtn.disabled=false;details.open=false;return}
+      if(data.step==='answer'){answerDiv.innerHTML=formatAnswer(data.content)}
+      else if(data.step==='thinking'){addStep(stepsDiv,'think',data.content)}
+      else if(data.step==='memory'){addStep(stepsDiv,'memory',data.content)}
+      else if(data.step==='tools_selected'){addStep(stepsDiv,'think','Tools: '+(data.tools||[]).join(', '))}
+      else if(data.step==='tool_call'){addStep(stepsDiv,data.tool==='detect_anomalies'?'anomaly':data.tool==='analyze_spend'||data.tool==='analyze_pricing'?'analytics':'search',`Calling ${data.tool}...`)}
+      else if(data.step==='tool_result'){addStep(stepsDiv,'search',`${data.tool}: ${data.summary}`)}
+      else if(data.step==='memory_stored'){addStep(stepsDiv,'save','Finding stored in knowledge graph')}
+      messagesEl.scrollTop=messagesEl.scrollHeight;
+    }catch(err){}
+  };
+  es.onerror=function(){es.close();isStreaming=false;sendBtn.disabled=false;if(!answerDiv.innerHTML)answerDiv.innerHTML='<em style="color:var(--red)">Connection error.</em>'};
+}
+
+function addStep(container,type,text){
+  const icons={think:'\u2699',memory:'\uD83E\uDDE0',search:'\uD83D\uDD0D',analytics:'\uD83D\uDCCA',anomaly:'\u26A0',save:'\uD83D\uDCBE'};
+  const div=document.createElement('div');div.className='step '+type;
+  div.innerHTML=`<span class="icon">${icons[type]||'\u2022'}</span><span>${text}</span>`;
+  container.appendChild(div);
+}
+
+function formatAnswer(text){
+  if(!text)return'';
+  return text.replace(/\\n/g,'<br>').replace(/\n/g,'<br>')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\$([\d,.]+)/g,'<strong style="color:var(--amber)">$$$1</strong>')
+    .replace(/(INV-[\w-]+|TX-[\w-]+|tx-[\w-]+)/g,'<code>$1</code>');
+}
+
+/* ── Knowledge Graph ── */
+function updateGraph(query){
+  fetch('/api/graph?q='+encodeURIComponent(query)).then(r=>r.json()).then(renderGraph).catch(()=>{});
+}
+
+function renderGraph(data){
+  const container=document.getElementById('graph-box');
+  const ph=document.getElementById('graph-placeholder');if(ph)ph.style.display='none';
+  const tooltip=document.getElementById('graphTooltip');
+  const svg=d3.select('#graph-box svg');svg.selectAll('*').remove();
+  const w=container.clientWidth,h=container.clientHeight;
+  if(!data.nodes||!data.nodes.length)return;
+
+  // Glow filter
+  const defs=svg.append('defs');
+  const filter=defs.append('filter').attr('id','glow');
+  filter.append('feGaussianBlur').attr('stdDeviation','3').attr('result','blur');
+  filter.append('feComposite').attr('in','SourceGraphic').attr('in2','blur').attr('operator','over');
+
+  // Animated dashes
+  svg.append('style').text(`
+    .edge-line{stroke-dasharray:5,3;animation:dashFlow 1.5s linear infinite}
+    @keyframes dashFlow{to{stroke-dashoffset:-16}}
+  `);
+
+  const sim=d3.forceSimulation(data.nodes)
+    .force('link',d3.forceLink(data.links).id(d=>d.id).distance(55).strength(0.35))
+    .force('charge',d3.forceManyBody().strength(-100))
+    .force('center',d3.forceCenter(w/2,h/2))
+    .force('collide',d3.forceCollide().radius(22));
+
+  const g=svg.append('g');
+  svg.call(d3.zoom().scaleExtent([0.3,5]).on('zoom',()=>g.attr('transform',d3.event.transform)));
+
+  const link=g.append('g').selectAll('line').data(data.links).enter().append('line')
+    .attr('class','edge-line').attr('stroke','rgba(148,163,184,0.2)').attr('stroke-width',1.2);
+
+  const edgeLabel=g.append('g').selectAll('text').data(data.links).enter().append('text')
+    .text(d=>d.relation).attr('font-size','5.5px').attr('fill','rgba(148,163,184,0.4)').attr('text-anchor','middle').attr('font-family','Inter,sans-serif');
+
+  const rScale=d=>{const m={Vendor:16,Invoice:12,Transaction:12,Product:9};return m[d.type]||6};
+  const node=g.append('g').selectAll('circle').data(data.nodes).enter().append('circle')
+    .attr('r',rScale).attr('fill',d=>d.color||'#7c3aed').attr('stroke','rgba(255,255,255,0.15)').attr('stroke-width',0.5)
+    .attr('filter','url(#glow)').style('cursor','pointer')
+    .on('mouseover',function(d){
+      d3.select(this).transition().duration(150).attr('r',rScale(d)*1.5).attr('stroke','#fff').attr('stroke-width',1.5);
+      tooltip.style.opacity='1';
+      tooltip.innerHTML=`<div class="tt-name">${d.name||''}</div><div class="tt-type">${d.type||''}</div>${d.amount?`<div class="tt-amount">$${Number(d.amount).toLocaleString()}</div>`:''}`;
+    })
+    .on('mousemove',function(){
+      const[mx,my]=d3.mouse(container);
+      tooltip.style.left=(mx+15)+'px';tooltip.style.top=(my-10)+'px';
+    })
+    .on('mouseout',function(d){
+      d3.select(this).transition().duration(150).attr('r',rScale(d)).attr('stroke','rgba(255,255,255,0.15)').attr('stroke-width',0.5);
+      tooltip.style.opacity='0';
+    })
+    .call(d3.drag()
+      .on('start',d=>{if(!d3.event.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y})
+      .on('drag',d=>{d.fx=d3.event.x;d.fy=d3.event.y})
+      .on('end',d=>{if(!d3.event.active)sim.alphaTarget(0);d.fx=null;d.fy=null}));
+
+  const label=g.append('g').selectAll('text').data(data.nodes).enter().append('text')
+    .text(d=>d.name?.length>18?d.name.slice(0,16)+'..':d.name)
+    .attr('font-size','6.5px').attr('fill','rgba(226,232,240,0.6)').attr('dx',d=>rScale(d)+4).attr('dy',3).attr('font-family','Inter,sans-serif');
+
+  sim.on('tick',()=>{
+    link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    edgeLabel.attr('x',d=>(d.source.x+d.target.x)/2).attr('y',d=>(d.source.y+d.target.y)/2);
+    node.attr('cx',d=>d.x).attr('cy',d=>d.y);label.attr('x',d=>d.x).attr('y',d=>d.y);
+  });
+
+  node.attr('opacity',0).transition().duration(500).delay((_,i)=>i*30).attr('opacity',1);
+  label.attr('opacity',0).transition().duration(500).delay((_,i)=>i*30).attr('opacity',1);
+  link.attr('opacity',0).transition().duration(300).delay(200).attr('opacity',1);
+  edgeLabel.attr('opacity',0).transition().duration(300).delay(200).attr('opacity',1);
+}
+
+/* ── Pricing Tab ── */
+let pricingLoaded=false;
+const COLORS=['#7c3aed','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#8b5cf6','#14b8a6','#f97316','#6366f1'];
+
+function loadPricing(){
+  pricingLoaded=true;
+  fetch('/api/pricing').then(r=>r.json()).then(d=>{
+    document.getElementById('savings-badge').textContent='$'+Math.round(d.total_savings_potential).toLocaleString()+' savings potential';
+    buildPriceTable(d);
+    buildTrendChart(d);
+    buildSavingsChart(d);
+  }).catch(e=>{document.getElementById('savings-badge').textContent='Error loading'});
+}
+
+function buildPriceTable(d){
+  const tbody=document.getElementById('price-tbody');
+  const products=Object.entries(d.product_vendor_prices||{}).sort((a,b)=>b[1].savings_potential-a[1].savings_potential);
+  tbody.innerHTML=products.slice(0,25).map(([name,info])=>{
+    const spread=info.worst_price-info.best_price;
+    const spreadPct=info.best_price>0?((spread/info.best_price)*100).toFixed(0):0;
+    return `<tr>
+      <td class="product-name" title="${name}">${name}</td>
+      <td class="sku">${info.sku}</td>
+      <td><span style="color:var(--green)">${info.best_vendor}</span></td>
+      <td class="price-cell price-best">$${info.best_price.toFixed(2)}</td>
+      <td class="price-cell price-worst">$${info.worst_price.toFixed(2)}</td>
+      <td class="price-cell" style="color:${spread>0?'var(--red)':'var(--text2)'}">$${spread.toFixed(2)} (${spreadPct}%)</td>
+      <td class="price-cell" style="color:var(--amber);font-weight:700">$${info.savings_potential.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+}
+
+function buildTrendChart(d){
+  const products=Object.entries(d.price_trends||{}).filter(([_,v])=>v.length>=2).slice(0,6);
+  const datasets=products.map(([name,points],i)=>{
+    const vendorGroups={};
+    points.forEach(p=>{if(!vendorGroups[p.vendor])vendorGroups[p.vendor]=[];vendorGroups[p.vendor].push(p)});
+    const mainVendor=Object.keys(vendorGroups).sort((a,b)=>vendorGroups[b].length-vendorGroups[a].length)[0];
+    const pts=vendorGroups[mainVendor]||[];
+    return{label:name.slice(0,25),data:pts.map(p=>({x:p.month,y:p.avg_price})),borderColor:COLORS[i%COLORS.length],backgroundColor:'transparent',tension:0.3,pointRadius:3,borderWidth:2};
+  });
+  const allMonths=[...new Set(products.flatMap(([_,pts])=>pts.map(p=>p.month)))].sort();
+  new Chart(document.getElementById('trendChart'),{
+    type:'line',data:{labels:allMonths,datasets},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:10},boxWidth:12}}},
+      scales:{x:{ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#475569',font:{size:9},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,0.03)'}}}}
+  });
+}
+
+function buildSavingsChart(d){
+  const items=Object.entries(d.product_vendor_prices||{}).filter(([_,v])=>v.savings_potential>0).sort((a,b)=>b[1].savings_potential-a[1].savings_potential).slice(0,10);
+  new Chart(document.getElementById('savingsChart'),{
+    type:'bar',data:{labels:items.map(([n])=>n.slice(0,20)),datasets:[{data:items.map(([_,v])=>v.savings_potential),backgroundColor:COLORS.slice(0,items.length).map(c=>c+'33'),borderColor:COLORS.slice(0,items.length),borderWidth:1}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#475569',font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#94a3b8',font:{size:9}},grid:{display:false}}}}
+  });
+}
+
+async function generateRecommendations(){
+  const btn=document.getElementById('recoBtn');btn.disabled=true;btn.textContent='Generating...';
+  const grid=document.getElementById('reco-grid');
+  grid.innerHTML='<div style="color:var(--text2);font-size:0.85rem;padding:1rem">Asking Distil Labs SLM for optimization recommendations...</div>';
+  try{
+    const res=await fetch('/api/pricing/recommend',{method:'POST'});
+    const data=await res.json();
+    if(data.recommendations){
+      grid.innerHTML=data.recommendations.map(r=>`<div class="reco-card">
+        <div class="product">${r.product||'General'}</div>
+        <div class="action">${r.action||''}</div>
+        <div class="detail">${r.detail||''}</div>
+        ${r.savings?`<div class="saving">Save $${Number(r.savings).toLocaleString()}</div>`:''}
+      </div>`).join('');
+    } else {
+      grid.innerHTML=`<div class="reco-card" style="grid-column:1/-1"><div class="detail">${data.raw||'No recommendations generated.'}</div></div>`;
+    }
+  }catch(err){grid.innerHTML=`<div style="color:var(--red);padding:1rem">Error: ${err.message}</div>`}
+  btn.disabled=false;btn.textContent='Generate with SLM';
+}
+
+/* ── Red Team ── */
+async function runRedTeam(){
+  const btn=document.getElementById('rtBtn');btn.disabled=true;btn.textContent='Generating...';
+  const results=document.getElementById('rt-results');results.style.display='grid';
+  const invoice=document.getElementById('rt-invoice');const hint=document.getElementById('rt-hint');
+  const steps=document.getElementById('rt-steps');const verdict=document.getElementById('rt-verdict');
+  const explanation=document.getElementById('rt-explanation');
+
+  invoice.textContent='Generating...';hint.textContent='';verdict.textContent='';explanation.textContent='';
+  steps.innerHTML=`<div class="rt-step active"><div class="dot"></div>Generating fraudulent invoice via Distil Labs SLM...</div>`;
+
+  try{
+    const genRes=await fetch('/api/redteam/generate',{method:'POST'});
+    const genData=await genRes.json();
+    invoice.textContent=genData.invoice||'(empty)';
+    hint.textContent='Hidden fraud: '+(genData.fraud_hint||'unknown');
+    steps.innerHTML=`<div class="rt-step done"><div class="dot"></div>Invoice generated</div><div class="rt-step active"><div class="dot"></div>Ingesting through cognee + running detection...</div>`;
+
+    const detectRes=await fetch('/api/redteam/detect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoice:genData.invoice})});
+    const detectData=await detectRes.json();
+
+    steps.innerHTML=`<div class="rt-step done"><div class="dot"></div>Invoice generated</div><div class="rt-step done"><div class="dot"></div>Ingested through cognee pipeline</div><div class="rt-step done"><div class="dot"></div>Anomaly detection complete</div>`;
+    verdict.className='rt-verdict '+(detectData.detected?'detected':'missed');
+    verdict.textContent=detectData.detected?'FRAUD DETECTED':'FRAUD MISSED';
+    explanation.innerHTML=formatAnswer(detectData.explanation||'');
+  }catch(err){
+    verdict.className='rt-verdict missed';verdict.textContent='ERROR';
+    explanation.textContent=err.message;
+  }
+  btn.disabled=false;btn.textContent='Generate Fraudulent Invoice';
+}
+
+/* ── Ingest Modal ── */
+function showIngestModal(){document.getElementById('ingestModal').classList.add('show')}
+function closeIngestModal(){document.getElementById('ingestModal').classList.remove('show')}
+async function submitIngest(){
+  const text=document.getElementById('ingestText').value.trim();if(!text)return;
+  closeIngestModal();switchTab('auditor');
+  addMessage('user','[Ingest] Adding new document to knowledge graph...');
+  const msgDiv=addMessage('agent','<em style="color:var(--text2)">Processing through cognee pipeline...</em>');
+  try{
+    const res=await fetch('/api/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const data=await res.json();
+    msgDiv.querySelector('.answer').innerHTML=`Document ingested: <strong>${data.status}</strong> (${data.time_ms}ms, ${data.chunks_found} chunks found)`;
+  }catch(err){msgDiv.querySelector('.answer').innerHTML='<em style="color:var(--red)">Ingest error: '+err.message+'</em>'}
+  document.getElementById('ingestText').value='';
+}
+</script>
+</body></html>
