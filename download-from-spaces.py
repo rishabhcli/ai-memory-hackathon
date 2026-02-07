@@ -38,7 +38,9 @@ def get_url(path: str) -> str:
 
 
 def download_file(url: str, dest: str):
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    dirname = os.path.dirname(dest)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
     if os.path.exists(dest):
         print(f"  Already exists: {dest}")
         return
