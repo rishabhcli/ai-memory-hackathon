@@ -405,8 +405,8 @@ async def semantic_search(q: str = Query(...), limit: int = Query(20)):
     results = qdrant.query_points(
         collection_name="DocumentChunk_text",
         prefetch=[
-            Prefetch(query=vec, limit=100),
-            Prefetch(query=vec, limit=50),
+            Prefetch(query=vec, using="text", limit=100),
+            Prefetch(query=vec, using="text", limit=50),
         ],
         query=FusionQuery(fusion=Fusion.RRF),
         limit=limit,
@@ -431,6 +431,7 @@ async def investigate(point_id: str):
                 strategy=RecommendStrategy.BEST_SCORE,
             )
         ),
+        using="text",
         limit=10,
         with_payload=True,
     )
@@ -468,6 +469,7 @@ async def explain_anomaly(point_id: str):
                     strategy=RecommendStrategy.BEST_SCORE,
                 )
             ),
+            using="text",
             limit=5,
             with_payload=True,
         )

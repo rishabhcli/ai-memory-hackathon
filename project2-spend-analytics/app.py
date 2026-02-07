@@ -306,8 +306,8 @@ async def semantic_search(q: str = Query(...), limit: int = Query(20)):
     results = qdrant.query_points(
         collection_name="DocumentChunk_text",
         prefetch=[
-            Prefetch(query=vec, limit=100),
-            Prefetch(query=vec, limit=50),
+            Prefetch(query=vec, using="text", limit=100),
+            Prefetch(query=vec, using="text", limit=50),
         ],
         query=FusionQuery(fusion=Fusion.RRF),
         limit=limit,
@@ -330,6 +330,7 @@ async def grouped_vendor_search(q: str = Query(...), limit: int = Query(20)):
     groups = qdrant.query_points_groups(
         collection_name="DocumentChunk_text",
         query=vec,
+        using="text",
         group_by="type",
         limit=limit,
         group_size=5,
