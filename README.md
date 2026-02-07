@@ -46,7 +46,8 @@ Any tool, workflow, interface, or feature that benefits from QA over vendor, pro
 - Build tools, agents, or workflows on top of the Q&A pipeline
 
 **Before installation**:
-- copy `models/` from the USB to your working directory (or download via `uv run python download-from-spaces.py`)
+- copy `models/` from the USB to your working directory
+- do the same for `cognee_export/`
 - verify the three subdirectories contain Modelfile and a *.gguf each
 
 **Project installation**:
