@@ -11,6 +11,7 @@ import os
 import sys
 import json
 import time
+import ast
 from collections import defaultdict
 from contextlib import asynccontextmanager
 
@@ -58,7 +59,8 @@ def parse_text_payload(payload):
             return json.loads(text.replace("'", '"'))
         except Exception:
             try:
-                return eval(text)
+                parsed = ast.literal_eval(text)
+                return parsed if isinstance(parsed, dict) else None
             except Exception:
                 return None
     return None
@@ -106,7 +108,8 @@ def compute_analytics(invoices, transactions):
                 items = json.loads(items_str.replace("'", '"'))
             except Exception:
                 try:
-                    items = eval(items_str)
+                    parsed_items = ast.literal_eval(items_str)
+                    items = parsed_items if isinstance(parsed_items, list) else []
                 except Exception:
                     items = []
         for item in items:
