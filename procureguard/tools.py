@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import time
+import ast
 import statistics
 from collections import defaultdict
 
@@ -100,10 +101,12 @@ def _parse_record(payload: dict):
         return text
     if isinstance(text, str):
         try:
-            return json.loads(text.replace("'", '"'))
+            parsed = json.loads(text)
+            return parsed if isinstance(parsed, dict) else None
         except Exception:
             try:
-                return eval(text)
+                parsed = ast.literal_eval(text)
+                return parsed if isinstance(parsed, dict) else None
             except Exception:
                 return None
     return None
@@ -161,10 +164,12 @@ def compute_analytics():
         items = items_raw if isinstance(items_raw, list) else []
         if isinstance(items_raw, str):
             try:
-                items = json.loads(items_raw.replace("'", '"'))
+                parsed = json.loads(items_raw)
+                items = parsed if isinstance(parsed, list) else []
             except Exception:
                 try:
-                    items = eval(items_raw)
+                    parsed = ast.literal_eval(items_raw)
+                    items = parsed if isinstance(parsed, list) else []
                 except Exception:
                     items = []
         for item in items:
@@ -201,10 +206,12 @@ def _parse_items(items_raw):
         return items_raw
     if isinstance(items_raw, str):
         try:
-            return json.loads(items_raw.replace("'", '"'))
+            parsed = json.loads(items_raw)
+            return parsed if isinstance(parsed, list) else []
         except Exception:
             try:
-                return eval(items_raw)
+                parsed = ast.literal_eval(items_raw)
+                return parsed if isinstance(parsed, list) else []
             except Exception:
                 return []
     return []

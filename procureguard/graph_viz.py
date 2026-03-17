@@ -5,6 +5,7 @@ Builds a small D3-compatible {nodes, links} JSON for the knowledge graph panel.
 """
 
 import json
+import ast
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 
@@ -28,10 +29,12 @@ def _parse_text(payload: dict):
         return text
     if isinstance(text, str):
         try:
-            return json.loads(text.replace("'", '"'))
+            parsed = json.loads(text)
+            return parsed if isinstance(parsed, dict) else {}
         except Exception:
             try:
-                return eval(text)
+                parsed = ast.literal_eval(text)
+                return parsed if isinstance(parsed, dict) else {}
             except Exception:
                 return {}
     return {}
@@ -97,10 +100,12 @@ def extract_subgraph(qdrant: QdrantClient, query: str, embed_fn, limit: int = 30
         items_raw = data.get("items", [])
         if isinstance(items_raw, str):
             try:
-                items_raw = json.loads(items_raw.replace("'", '"'))
+                parsed_items = json.loads(items_raw)
+                items_raw = parsed_items if isinstance(parsed_items, list) else []
             except Exception:
                 try:
-                    items_raw = eval(items_raw)
+                    parsed_items = ast.literal_eval(items_raw)
+                    items_raw = parsed_items if isinstance(parsed_items, list) else []
                 except Exception:
                     items_raw = []
         if isinstance(items_raw, list):
