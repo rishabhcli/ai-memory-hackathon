@@ -13,6 +13,7 @@ import sys
 import json
 import time
 import statistics
+import ast
 from collections import defaultdict
 from contextlib import asynccontextmanager
 
@@ -61,7 +62,8 @@ def parse_record(payload):
             return json.loads(text.replace("'", '"'))
         except Exception:
             try:
-                return eval(text)
+                parsed = ast.literal_eval(text)
+                return parsed if isinstance(parsed, dict) else None
             except Exception:
                 return None
     return None
